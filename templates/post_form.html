@@ -1,0 +1,138 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">Criar/Editar Publicação</h4>
+                    <a href="{{ url_for('posts.index') }}" class="btn btn-light btn-sm">
+                        <i class="fas fa-arrow-left"></i> Voltar
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ category }}">{{ message }}</div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+                    
+                    <form method="POST" enctype="multipart/form-data" action="{{ url_for('posts.update_post', post_id=post.id) if post else url_for('posts.create_post') }}">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="bot_id" class="form-label">Bot</label>
+                                    <select class="form-select" id="bot_id" name="bot_id" required>
+                                        <option value="">Selecione um bot</option>
+                                        {% for bot in bots %}
+                                            <option value="{{ bot.id }}" {% if post and post.bot_id == bot.id %}selected{% endif %}>
+                                                {{ bot.name }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="media_type" class="form-label">Tipo de Mídia</label>
+                                    <select class="form-select" id="media_type" name="media_type" required>
+                                        <option value="text" {% if post and post.media_type == 'text' %}selected{% endif %}>Texto</option>
+                                        <option value="photo" {% if post and post.media_type == 'photo' %}selected{% endif %}>Foto</option>
+                                        <option value="video" {% if post and post.media_type == 'video' %}selected{% endif %}>Vídeo</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3 media-url-container" id="media-url-container">
+                                    <label for="media_url" class="form-label">URL da Mídia</label>
+                                    <input type="text" class="form-control" id="media_url" name="media_url" value="{{ post.media_url if post else '' }}">
+                                    <div class="form-text">URL da foto ou vídeo (opcional se fizer upload)</div>
+                                </div>
+                                
+                                <div class="mb-3 media-file-container" id="media-file-container">
+                                    <label for="media_file" class="form-label">Upload de Mídia</label>
+                                    <input type="file" class="form-control" id="media_file" name="media_file">
+                                    <div class="form-text">Faça upload de uma foto ou vídeo (opcional se fornecer URL)</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="caption" class="form-label">Legenda</label>
+                                    <textarea class="form-control" id="caption" name="caption" rows="5">{{ post.caption if post else '' }}</textarea>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="button_text" class="form-label">Texto do Botão</label>
+                                    <input type="text" class="form-control" id="button_text" name="button_text" value="{{ post.button_text if post else '' }}">
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="button_url" class="form-label">URL do Botão</label>
+                                    <input type="text" class="form-control" id="button_url" name="button_url" value="{{ post.button_url if post else '' }}">
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="interval_seconds" class="form-label">Intervalo (segundos)</label>
+                                    <input type="number" class="form-control" id="interval_seconds" name="interval_seconds" value="{{ post.interval_seconds if post else '3600' }}" required>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="groups" class="form-label">IDs dos Grupos (um por linha)</label>
+                                    <textarea class="form-control" id="groups" name="groups" rows="5">{{ '\n'.join(post.groups) if post and post.groups else '' }}</textarea>
+                                    <div class="form-text">Insira os IDs dos grupos do Telegram, um por linha</div>
+                                </div>
+                                
+                                <div class="mb-3 form-check">
+                                    <input type="checkbox" class="form-check-input" id="auto_delete" name="auto_delete" {% if post and post.auto_delete %}checked{% endif %}>
+                                    <label class="form-check-label" for="auto_delete">Deletar automaticamente a última publicação antes de enviar nova</label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <a href="{{ url_for('posts.media_library') }}" class="btn btn-info" target="_blank">
+                                <i class="fas fa-photo-video"></i> Biblioteca de Mídia
+                            </a>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('posts.index') }}" class="btn btn-secondary">Cancelar</a>
+                            <button type="submit" class="btn btn-primary">
+                                {% if post %}Atualizar{% else %}Criar{% endif %} Publicação
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const mediaTypeSelect = document.getElementById('media_type');
+        const mediaUrlContainer = document.getElementById('media-url-container');
+        const mediaFileContainer = document.getElementById('media-file-container');
+        
+        function updateMediaFields() {
+            const mediaType = mediaTypeSelect.value;
+            
+            if (mediaType === 'text') {
+                mediaUrlContainer.style.display = 'none';
+                mediaFileContainer.style.display = 'none';
+            } else {
+                mediaUrlContainer.style.display = 'block';
+                mediaFileContainer.style.display = 'block';
+            }
+        }
+        
+        // Inicializar
+        updateMediaFields();
+        
+        // Atualizar quando o tipo de mídia mudar
+        mediaTypeSelect.addEventListener('change', updateMediaFields);
+    });
+</script>
+{% endblock %}

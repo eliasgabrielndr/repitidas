@@ -1,0 +1,387 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1>Publicações</h1>
+            <div>
+                {% if session.is_admin == False and user_post_limit %}
+                <div class="alert alert-info mb-2 p-2">
+                    <small>Você está usando {{ user_post_count }} de {{ user_post_limit }} publicações permitidas</small>
+                </div>
+                {% endif %}
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addPostModal"
+                    {% if session.is_admin == False and user_post_limit and user_post_count >= user_post_limit %}disabled{% endif %}>
+                    <i class="bi bi-plus-circle"></i> Nova Publicação
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Controle de Envio</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Status dos Bots</h6>
+                        <ul class="list-group">
+                            {% for bot in bots %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                {{ bot.name }}
+                                <span class="badge {% if bot.is_active %}bg-success{% else %}bg-secondary{% endif %} rounded-pill">
+                                    {% if bot.is_active %}Ativo{% else %}Inativo{% endif %}
+                                </span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    <div class="col-md-6 text-center">
+                        <h6>Ações</h6>
+                        <div class="d-grid gap-2">
+                            <button id="startAllBtn" class="btn btn-success">
+                                <i class="bi bi-play-circle"></i> Iniciar Todos os Bots
+                            </button>
+                            <button id="stopAllBtn" class="btn btn-danger">
+                                <i class="bi bi-stop-circle"></i> Parar Todos os Bots
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if posts and posts|length > 0 %}
+<div class="row">
+    {% for post in posts %}
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">{{ post.media_type|capitalize }}</h5>
+                <div>
+                    <span class="badge bg-primary">{{ post.interval_seconds // 60 }} min</span>
+                    {% set bot_name = get_bot_name(post.bot_id) %}
+                    <span class="badge bg-info">{{ bot_name or 'Sem bot' }}</span>
+                    {% if post.auto_delete %}
+                    <span class="badge bg-warning">Auto-Delete</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-body">
+                <p><strong>URL da Mídia:</strong> <small class="text-muted">{{ post.media_url }}</small></p>
+                <p><strong>Legenda:</strong> {{ post.caption }}</p>
+                <p><strong>Botão:</strong> {{ post.button_text }} → {{ post.button_url }}</p>
+                <p><strong>Grupos:</strong> {{ post.groups|join(', ') }}</p>
+                
+                {% if post.last_sent %}
+                <div class="alert alert-info mt-2 mb-0">
+                    <small>Último envio: {{ post.last_sent.strftime('%d/%m/%Y %H:%M:%S') }}</small>
+                </div>
+                {% endif %}
+                
+                {% if post.send_status and post.send_status|length > 0 %}
+                <div class="mt-2">
+                    <button class="btn btn-sm btn-outline-info" type="button" data-bs-toggle="collapse" data-bs-target="#statusCollapse{{ post.id }}">
+                        Ver status de envio
+                    </button>
+                    <div class="collapse mt-2" id="statusCollapse{{ post.id }}">
+                        <div class="card card-body p-2">
+                            <ul class="list-group list-group-flush">
+                                {% for group_id, status in post.send_status.items() %}
+                                <li class="list-group-item p-2">
+                                    <small>
+                                        Grupo {{ group_id }}: 
+                                        <span class="badge {% if status.status == 'success' %}bg-success{% else %}bg-danger{% endif %}">
+                                            {{ 'Sucesso' if status.status == 'success' else 'Falha' }}
+                                        </span>
+                                        {% if status.timestamp %}
+                                        <br>{{ status.timestamp }}
+                                        {% endif %}
+                                        {% if status.message %}
+                                        <br>{{ status.message }}
+                                        {% endif %}
+                                    </small>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            <div class="card-footer d-flex justify-content-between">
+                <button class="btn btn-sm btn-outline-primary" 
+                        data-bs-toggle="modal" 
+                        data-bs-target="#editPostModal{{ post.id }}">
+                    <i class="bi bi-pencil"></i> Editar
+                </button>
+                <button class="btn btn-sm btn-outline-danger" 
+                        data-bs-toggle="modal" 
+                        data-bs-target="#deletePostModal{{ post.id }}">
+                    <i class="bi bi-trash"></i> Excluir
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Edição -->
+    <div class="modal fade" id="editPostModal{{ post.id }}" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Editar Publicação</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="{{ url_for('posts.update_post', post_id=post.id) }}" method="post" enctype="multipart/form-data">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="bot_id" class="form-label">Bot</label>
+                            <select class="form-select" id="bot_id" name="bot_id">
+                                <option value="">Selecione um bot</option>
+                                {% for bot in bots %}
+                                <option value="{{ bot.id }}" {% if post.bot_id == bot.id %}selected{% endif %}>{{ bot.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Bot que enviará esta publicação</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="media_type" class="form-label">Tipo de Mídia</label>
+                            <select class="form-select" id="media_type_{{ post.id }}" name="media_type" required>
+                                <option value="text" {% if post.media_type == 'text' %}selected{% endif %}>Texto</option>
+                                <option value="photo" {% if post.media_type == 'photo' %}selected{% endif %}>Foto</option>
+                                <option value="video" {% if post.media_type == 'video' %}selected{% endif %}>Vídeo</option>
+                            </select>
+                        </div>
+                        <div class="mb-3 media-url-container" id="media-url-container-{{ post.id }}">
+                            <label for="media_url" class="form-label">URL da Mídia</label>
+                            <input type="text" class="form-control" id="media_url" name="media_url" value="{{ post.media_url }}">
+                            <div class="form-text">URL da foto ou vídeo (opcional se fizer upload)</div>
+                        </div>
+                        <div class="mb-3 media-file-container" id="media-file-container-{{ post.id }}">
+                            <label for="media_file" class="form-label">Upload de Mídia</label>
+                            <input type="file" class="form-control" id="media_file" name="media_file">
+                            <div class="form-text">Faça upload de uma foto ou vídeo (opcional se fornecer URL)</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="caption" class="form-label">Legenda</label>
+                            <textarea class="form-control" id="caption" name="caption" rows="3">{{ post.caption }}</textarea>
+                            <div class="form-text">Texto que aparecerá junto com a mídia</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="button_text" class="form-label">Texto do Botão</label>
+                            <input type="text" class="form-control" id="button_text" name="button_text" value="{{ post.button_text }}">
+                        </div>
+                        <div class="mb-3">
+                            <label for="button_url" class="form-label">URL do Botão</label>
+                            <input type="text" class="form-control" id="button_url" name="button_url" value="{{ post.button_url }}">
+                        </div>
+                        <div class="mb-3">
+                            <label for="interval_seconds" class="form-label">Intervalo (segundos)</label>
+                            <input type="number" class="form-control" id="interval_seconds" name="interval_seconds" value="{{ post.interval_seconds }}" min="1" required>
+                            <div class="form-text">Tempo entre envios desta publicação (em segundos)</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="groups" class="form-label">IDs dos Grupos</label>
+                            <textarea class="form-control" id="groups" name="groups" rows="3">{{ post.groups|join('\n') }}</textarea>
+                            <div class="form-text">IDs dos grupos, um por linha. Se deixar em branco, usará os grupos padrão do bot.</div>
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="auto_delete" name="auto_delete" {% if post.auto_delete %}checked{% endif %}>
+                            <label class="form-check-label" for="auto_delete">Deletar automaticamente a última publicação antes de enviar nova</label>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Exclusão -->
+    <div class="modal fade" id="deletePostModal{{ post.id }}" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmar Exclusão</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Tem certeza que deseja excluir esta publicação?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <form action="{{ url_for('posts.delete_post', post_id=post.id) }}" method="post">
+                        <button type="submit" class="btn btn-danger">Excluir</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i> Nenhuma publicação cadastrada. Clique em "Nova Publicação" para começar.
+</div>
+{% endif %}
+
+<!-- Modal de Adição -->
+<div class="modal fade" id="addPostModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Nova Publicação</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('posts.create_post') }}" method="post" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="bot_id" class="form-label">Bot</label>
+                        <select class="form-select" id="bot_id" name="bot_id">
+                            <option value="">Selecione um bot</option>
+                            {% for bot in bots %}
+                            <option value="{{ bot.id }}">{{ bot.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">Bot que enviará esta publicação</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="media_type" class="form-label">Tipo de Mídia</label>
+                        <select class="form-select" id="media_type_new" name="media_type" required>
+                            <option value="text">Texto</option>
+                            <option value="photo">Foto</option>
+                            <option value="video">Vídeo</option>
+                        </select>
+                    </div>
+                    <div class="mb-3 media-url-container" id="media-url-container-new">
+                        <label for="media_url" class="form-label">URL da Mídia</label>
+                        <input type="text" class="form-control" id="media_url" name="media_url">
+                        <div class="form-text">URL da foto ou vídeo (opcional se fizer upload)</div>
+                    </div>
+                    <div class="mb-3 media-file-container" id="media-file-container-new">
+                        <label for="media_file" class="form-label">Upload de Mídia</label>
+                        <input type="file" class="form-control" id="media_file" name="media_file">
+                        <div class="form-text">Faça upload de uma foto ou vídeo (opcional se fornecer URL)</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="caption" class="form-label">Legenda</label>
+                        <textarea class="form-control" id="caption" name="caption" rows="3"></textarea>
+                        <div class="form-text">Texto que aparecerá junto com a mídia</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="button_text" class="form-label">Texto do Botão</label>
+                        <input type="text" class="form-control" id="button_text" name="button_text">
+                    </div>
+                    <div class="mb-3">
+                        <label for="button_url" class="form-label">URL do Botão</label>
+                        <input type="text" class="form-control" id="button_url" name="button_url">
+                    </div>
+                    <div class="mb-3">
+                        <label for="interval_seconds" class="form-label">Intervalo (segundos)</label>
+                        <input type="number" class="form-control" id="interval_seconds" name="interval_seconds" value="300" min="1" required>
+                        <div class="form-text">Tempo entre envios desta publicação (em segundos)</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="groups" class="form-label">IDs dos Grupos</label>
+                        <textarea class="form-control" id="groups" name="groups" rows="3"></textarea>
+                        <div class="form-text">IDs dos grupos, um por linha. Se deixar em branco, usará os grupos padrão do bot.</div>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="auto_delete" name="auto_delete">
+                        <label class="form-check-label" for="auto_delete">Deletar automaticamente a última publicação antes de enviar nova</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Adicionar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Botões de controle de bots
+    document.getElementById('startAllBtn').addEventListener('click', function() {
+        fetch('/bot/start_all', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Todos os bots foram iniciados com sucesso!');
+                    location.reload();
+                } else {
+                    alert('Erro ao iniciar os bots: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                alert('Erro ao iniciar os bots. Verifique o console para mais detalhes.');
+            });
+    });
+
+    document.getElementById('stopAllBtn').addEventListener('click', function() {
+        fetch('/bot/stop_all', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Todos os bots foram parados com sucesso!');
+                    location.reload();
+                } else {
+                    alert('Erro ao parar os bots: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                alert('Erro ao parar os bots. Verifique o console para mais detalhes.');
+            });
+    });
+
+    // Função para atualizar campos de mídia com base no tipo selecionado
+    function updateMediaFields(mediaTypeId, containerUrlId, containerFileId) {
+        const mediaTypeSelect = document.getElementById(mediaTypeId);
+        const mediaUrlContainer = document.getElementById(containerUrlId);
+        const mediaFileContainer = document.getElementById(containerFileId);
+        
+        if (!mediaTypeSelect || !mediaUrlContainer || !mediaFileContainer) return;
+        
+        function update() {
+            const mediaType = mediaTypeSelect.value;
+            
+            if (mediaType === 'text') {
+                mediaUrlContainer.style.display = 'none';
+                mediaFileContainer.style.display = 'none';
+            } else {
+                mediaUrlContainer.style.display = 'block';
+                mediaFileContainer.style.display = 'block';
+            }
+        }
+        
+        // Inicializar
+        update();
+        
+        // Atualizar quando o tipo de mídia mudar
+        mediaTypeSelect.addEventListener('change', update);
+    }
+
+    // Inicializar para o modal de nova publicação
+    updateMediaFields('media_type_new', 'media-url-container-new', 'media-file-container-new');
+    
+    // Inicializar para cada modal de edição
+    {% for post in posts %}
+    updateMediaFields('media_type_{{ post.id }}', 'media-url-container-{{ post.id }}', 'media-file-container-{{ post.id }}');
+    {% endfor %}
+});
+</script>
+{% endblock %}

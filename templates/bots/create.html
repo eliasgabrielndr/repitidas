@@ -1,0 +1,56 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <h1>Novo Bot</h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Informações do Bot</h5>
+            </div>
+            <div class="card-body">
+                <form action="{{ url_for('bots.create') }}" method="post">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Nome do Bot</label>
+                        <input type="text" class="form-control" id="name" name="name" required>
+                        <div class="form-text">Nome para identificação do bot no sistema</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="token" class="form-label">Token do Bot</label>
+                        <input type="text" class="form-control" id="token" name="token" required>
+                        <div class="form-text">Token fornecido pelo BotFather do Telegram</div>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('bots.index') }}" class="btn btn-secondary">Cancelar</a>
+                        <button type="submit" class="btn btn-primary">Salvar Bot</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Ajuda</h5>
+            </div>
+            <div class="card-body">
+                <h6>Como obter o token do bot?</h6>
+                <ol>
+                    <li>Abra o Telegram e procure por @BotFather</li>
+                    <li>Envie o comando /newbot</li>
+                    <li>Siga as instruções para criar um novo bot</li>
+                    <li>Copie o token fornecido e cole aqui</li>
+                </ol>
+                
+                <h6>Configuração de grupos</h6>
+                <p>Os grupos podem ser configurados posteriormente na página de edição do bot, após o cadastro inicial.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

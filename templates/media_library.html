@@ -1,0 +1,118 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">Biblioteca de Mídia</h4>
+                    <button type="button" class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                        <i class="fas fa-upload"></i> Fazer Upload
+                    </button>
+                </div>
+                <div class="card-body">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ category }}">{{ message }}</div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+                    
+                    <div class="row">
+                        {% for media in media_list %}
+                            <div class="col-md-3 mb-4">
+                                <div class="card h-100">
+                                    <div class="card-img-top media-preview">
+                                        {% if media.type == 'photo' %}
+                                            <img src="{{ url_for('static', filename=media.path.replace('static/', '')) }}" class="img-fluid" alt="{{ media.name }}">
+                                        {% elif media.type == 'video' %}
+                                            <div class="video-thumbnail">
+                                                <i class="fas fa-video fa-3x"></i>
+                                                <span>{{ media.name }}</span>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="card-body">
+                                        <h6 class="card-title text-truncate">{{ media.name }}</h6>
+                                        <p class="card-text">
+                                            <small class="text-muted">
+                                                Tipo: {{ media.type }}<br>
+                                                Tamanho: {{ media.size }} KB
+                                            </small>
+                                        </p>
+                                    </div>
+                                    <div class="card-footer d-flex justify-content-between">
+                                        <button class="btn btn-sm btn-primary copy-path" data-path="{{ media.path }}">
+                                            <i class="fas fa-copy"></i> Copiar Caminho
+                                        </button>
+                                        <form method="POST" action="{{ url_for('posts.delete_media') }}" onsubmit="return confirm('Tem certeza que deseja excluir este arquivo?');">
+                                            <input type="hidden" name="file_path" value="{{ media.path }}">
+                                            <button type="submit" class="btn btn-sm btn-danger">
+                                                <i class="fas fa-trash"></i> Excluir
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="col-12 text-center py-5">
+                                <p class="text-muted">Nenhum arquivo de mídia encontrado.</p>
+                                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                                    <i class="fas fa-upload"></i> Fazer Upload
+                                </button>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Upload -->
+<div class="modal fade" id="uploadModal" tabindex="-1" aria-labelledby="uploadModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="uploadModalLabel">Fazer Upload de Mídia</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" action="{{ url_for('posts.upload_media') }}" enctype="multipart/form-data" id="uploadForm">
+                    <div class="mb-3">
+                        <label for="mediaFile" class="form-label">Selecione um arquivo</label>
+                        <input type="file" class="form-control" id="mediaFile" name="media_file" required>
+                        <div class="form-text">Formatos suportados: JPG, PNG, GIF, MP4, AVI, MOV, WEBM</div>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-upload"></i> Fazer Upload
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Copiar caminho do arquivo para a área de transferência
+        document.querySelectorAll('.copy-path').forEach(button => {
+            button.addEventListener('click', function() {
+                const path = this.getAttribute('data-path');
+                navigator.clipboard.writeText(path).then(() => {
+                    // Feedback visual
+                    const originalText = this.innerHTML;
+                    this.innerHTML = '<i class="fas fa-check"></i> Copiado!';
+                    setTimeout(() => {
+                        this.innerHTML = originalText;
+                    }, 2000);
+                });
+            });
+        });
+    });
+</script>
+{% endblock %}

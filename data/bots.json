@@ -1,0 +1,16 @@
+[
+  {
+    "id": "d87299ec-caf8-4a12-bb38-44da57e4d127",
+    "name": "testebot",
+    "token": "8113853511:AAF7WoFMY73YBRS57POAeL9waHQeJ-pR8f8",
+    "default_groups": [
+      "-1002312141012",
+      "-1002253900870",
+      "-1002202578732",
+      "-1002463350823"
+    ],
+    "is_active": true,
+    "created_at": "2025-05-23T02:03:53.266446",
+    "updated_at": "2025-05-23T15:34:57.036728"
+  }
+]

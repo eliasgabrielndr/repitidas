@@ -1,0 +1,85 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1>Gerenciamento de Bots</h1>
+            <a href="{{ url_for('bots.create') }}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Novo Bot
+            </a>
+        </div>
+    </div>
+</div>
+
+{% if bots and bots|length > 0 %}
+<div class="row">
+    {% for bot in bots %}
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">{{ bot.name }}</h5>
+                <span class="badge {% if bot.is_active %}bg-success{% else %}bg-secondary{% endif %}">
+                    {% if bot.is_active %}Ativo{% else %}Inativo{% endif %}
+                </span>
+            </div>
+            <div class="card-body">
+                <p><strong>Token:</strong> <small class="text-muted">{{ bot.token[:10] }}...{{ bot.token[-5:] }}</small></p>
+                <p><strong>Grupos Padrão:</strong> {{ bot.default_groups|join(', ') or 'Nenhum grupo configurado' }}</p>
+                <p><strong>Criado em:</strong> {{ bot.created_at.strftime('%d/%m/%Y %H:%M') }}</p>
+            </div>
+            <div class="card-footer d-flex justify-content-between">
+                <div>
+                    <a href="{{ url_for('bots.edit', bot_id=bot.id) }}" class="btn btn-sm btn-outline-primary me-1">
+                        <i class="bi bi-pencil"></i> Editar
+                    </a>
+                    <button class="btn btn-sm btn-outline-danger" 
+                            data-bs-toggle="modal" 
+                            data-bs-target="#deleteBotModal{{ bot.id }}">
+                        <i class="bi bi-trash"></i> Excluir
+                    </button>
+                </div>
+                <form action="{{ url_for('bots.toggle_status', bot_id=bot.id) }}" method="post">
+                    <button type="submit" class="btn btn-sm {% if bot.is_active %}btn-outline-secondary{% else %}btn-outline-success{% endif %}">
+                        {% if bot.is_active %}
+                        <i class="bi bi-pause-circle"></i> Desativar
+                        {% else %}
+                        <i class="bi bi-play-circle"></i> Ativar
+                        {% endif %}
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Exclusão -->
+    <div class="modal fade" id="deleteBotModal{{ bot.id }}" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmar Exclusão</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Tem certeza que deseja excluir o bot <strong>{{ bot.name }}</strong>?</p>
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i> Atenção: Todas as publicações associadas a este bot ficarão sem bot atribuído.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <form action="{{ url_for('bots.delete', bot_id=bot.id) }}" method="post">
+                        <button type="submit" class="btn btn-danger">Excluir</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i> Nenhum bot cadastrado. Clique em "Novo Bot" para começar.
+</div>
+{% endif %}
+{% endblock %}
